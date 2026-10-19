@@ -13,7 +13,7 @@ flying bird/
 1. الأدمن بيعمل حساب للاستريمر من الداش بورد (يوزر + باسورد) ويبعتهوله.
 2. اللعبة بتبعت `POST /api/login` فيه اليوزر والباسورد والـ `deviceId`.
 3. **أول دخول** بيقفل الحساب على الجهاز ده. بعد كده أي جهاز تاني بياخد `WRONG_DEVICE`.
-4. اللعبة تقدر تعمل `/login` كل مرة عايزة تتأكد، والرد `ok: true` معناه مسموح.
+4. اللوجين بيرجّع `token`. لما الاستريمر يدوس PLAY اللعبة تبعت `POST /api/play` بالتوكن والـ `deviceId` في الهيدر، والسيرفر يتأكد منهم قبل ما يبدأ.
 5. لو الاستريمر غيّر جهازه، الأدمن بيدوس **فك ربط الجهاز**.
 6. الحساب شغال لحد ما الأدمن يحظره أو يمسحه.
 
@@ -40,11 +40,20 @@ npm start
 
 ## الداش بورد
 
+السيرفر نفسه بيعرض الداش بورد على `/admin`:
+
+- أونلاين: https://dodgerblue-jackal-575473.hostingersite.com/admin
+- على جهازك: http://localhost:3000/admin
+
+الصفحة دي ملف جاهز في `server/public/index.html`. لو عدّلت في كود الداش بورد، اعمل build تاني:
+
 ```
-npm run dashboard
+cd admin-dashboard
+npm install          (أول مرة بس)
+npm run build:server
 ```
 
-افتح http://localhost:5173
+وبعدين push و redeploy.
 
 ## Postman
 

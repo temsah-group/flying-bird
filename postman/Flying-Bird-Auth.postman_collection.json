@@ -145,6 +145,89 @@
       ]
     },
     {
+      "name": "3b. PLAY with token + same device -> OK",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "X-Device-Id",
+            "value": "{{deviceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/play",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "play"
+          ]
+        },
+        "description": "Game calls this when the streamer presses PLAY / START."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3c. PLAY from another device -> DEVICE_MISMATCH",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "X-Device-Id",
+            "value": "{{deviceId2}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/play",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "play"
+          ]
+        },
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 401', () => pm.expect(pm.response.code).to.be.oneOf([401]));",
+              "pm.test('DEVICE_MISMATCH', () => pm.expect(pm.response.json().code).to.eql('DEVICE_MISMATCH'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "4. Same device again -> OK",
       "request": {
         "method": "POST",
@@ -651,6 +734,48 @@
       ]
     },
     {
+      "name": "14b. PLAY with the old token -> SESSION_ENDED",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "X-Device-Id",
+            "value": "{{deviceId2}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/play",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "play"
+          ]
+        },
+        "description": "Password change / ban / reset-device end old tokens."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 401', () => pm.expect(pm.response.code).to.be.oneOf([401]));",
+              "pm.test('SESSION_ENDED', () => pm.expect(pm.response.json().code).to.eql('SESSION_ENDED'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "15. Login with new password -> OK",
       "request": {
         "method": "POST",
@@ -691,6 +816,47 @@
               "  pm.collectionVariables.set('token', pm.response.json().token);",
               "  console.log('token saved');",
               "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15b. PLAY with the new token -> OK",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "X-Device-Id",
+            "value": "{{deviceId2}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/play",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "play"
+          ]
+        },
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
             ]
           }
         }

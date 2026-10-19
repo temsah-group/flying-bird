@@ -1,10 +1,11 @@
 const User = require("../models/User");
 const { verifyPlayerToken, deviceHash } = require("../tokens");
 
-const fail = (res, status, code, message) => res.status(status).json({ ok: false, code, message });
+const fail = (res, status, code, message, extra = {}) =>
+  res.status(status).json({ ok: false, code, message, ...extra });
 
 /**
- * Put this before any FUTURE game endpoint that needs a logged-in streamer.
+ * Used by POST /api/play, and by any future game endpoint that needs a logged-in streamer.
  * The game sends:
  *   Authorization: Bearer <token from /login>
  *   X-Device-Id:   <same deviceId used in /login>
@@ -32,7 +33,7 @@ module.exports = async function requireAuth(req, res, next) {
   try {
     const user = await User.findById(payload.sub);
     if (!user) return fail(res, 401, "TOKEN_INVALID", "account not found");
-    if (user.banned) return fail(res, 403, "BANNED", "this account is banned");
+    if (user.banned) return fail(res, 403, "BANNED", "this account is banned", { reason: user.banReason || "" });
     if ((user.tokenVersion || 0) !== payload.tv || user.deviceId !== deviceId)
       return fail(res, 401, "SESSION_ENDED", "please log in again");
     req.user = user;

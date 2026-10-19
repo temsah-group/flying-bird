@@ -6,6 +6,7 @@ const config = require("../config");
 const { createLimiter } = require("../middleware/rateLimit");
 const { validateDeviceId, deviceDecision } = require("../rules");
 const { signPlayerToken } = require("../tokens");
+const requireAuth = require("../middleware/requireAuth");
 
 const router = express.Router();
 
@@ -117,5 +118,23 @@ router.post("/login", handle(async (req, res) => {
     user: { username: user.username, gameId: user.gameId },
   });
 }));
+
+// ---------------------------------------------------------------------------
+// POST /api/play   (no body)
+//   Headers:  Authorization: Bearer <token from /login>
+//             X-Device-Id:   <same deviceId used in /login>
+//
+//   The game calls this when the streamer presses PLAY / START.
+//   200 { ok: true }  -> start the game
+//   401 NO_TOKEN | TOKEN_EXPIRED | TOKEN_INVALID | DEVICE_MISMATCH | SESSION_ENDED  -> back to login
+//   403 BANNED
+// ---------------------------------------------------------------------------
+router.post("/play", requireAuth, (req, res) => {
+  res.json({
+    ok: true,
+    message: "ok to play",
+    user: { username: req.user.username, gameId: req.user.gameId },
+  });
+});
 
 module.exports = router;

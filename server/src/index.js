@@ -1,4 +1,5 @@
 const dns = require("dns");
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -32,12 +33,14 @@ app.get("/health", (_req, res) => res.json({ ok: true, games: [...config.games] 
 app.use("/api/admin", adminRoutes);
 app.use("/api", authRoutes);
 
-// Example of a future protected game endpoint (needs the token from /login):
-// const requireAuth = require("./middleware/requireAuth");
-// app.post("/api/score", requireAuth, async (req, res) => {
-//   // req.user is the logged-in player
-//   res.json({ ok: true });
-// });
+// Admin dashboard page (built from admin-dashboard with: npm run build:server)
+const dashboardFile = path.join(__dirname, "..", "public", "index.html");
+app.get("/", (_req, res) => res.redirect("/admin"));
+app.get("/admin", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.set("X-Frame-Options", "DENY");
+  res.sendFile(dashboardFile, (err) => err && res.status(404).send("Dashboard not built. Run: npm run build:server in admin-dashboard"));
+});
 
 mongoose
   .connect(config.mongoUri, { dbName: config.dbName })

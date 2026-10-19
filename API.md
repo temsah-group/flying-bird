@@ -2,7 +2,7 @@
 
 Base URL: `https://<server>/api` (local: `http://localhost:3000/api`). Everything is JSON.
 
-The game uses one endpoint only: `POST /login`. Accounts are created by the admin from the dashboard (there is no register).
+The game uses two endpoints: `POST /login` then `POST /play`. Accounts are created by the admin from the dashboard (there is no register).
 
 ---
 
@@ -44,7 +44,7 @@ The game uses one endpoint only: `POST /login`. Accounts are created by the admi
 }
 ```
 
-The game can call `/login` every time it needs to check (on start, or every few minutes). `ok: true` = allowed.
+`ok: true` = logged in.
 
 **Errors** — always `{ "ok": false, "code": "...", "message": "..." }`
 
@@ -58,16 +58,41 @@ The game can call `/login` every time it needs to check (on start, or every few 
 | 429 | `TOO_MANY_ATTEMPTS` | too many wrong passwords (`retryAfterSec` included) |
 | 500 | `SERVER_ERROR` | |
 
-### The token
+Keep the `token` in memory (no need to save it to a file). It is needed for `/play`.
 
-Not needed today. It is for future endpoints (scores, etc.). Any future endpoint that uses `requireAuth` expects:
+---
+
+## Play (the game)
+
+### `POST /api/play`
+
+Call it when the streamer presses **PLAY / START**. No body, only headers:
 
 ```
-Authorization: Bearer <token>
-X-Device-Id: <same deviceId>
+Authorization: Bearer <token from /login>
+X-Device-Id: <the SAME deviceId sent in /login>
 ```
 
-The token stops working when: it expires (`TOKEN_HOURS`), it is used from another device, or the admin resets the device / bans / changes the password / kicks.
+**200 OK** → start the game
+
+```json
+{ "ok": true, "message": "ok to play", "user": { "username": "streamer1", "gameId": "flying-bird" } }
+```
+
+**Errors**
+
+| HTTP | code | Meaning | Game does |
+|---|---|---|---|
+| 401 | `NO_TOKEN` | no Authorization header | back to login |
+| 401 | `TOKEN_EXPIRED` | token older than `TOKEN_HOURS` (24h) | back to login |
+| 401 | `TOKEN_INVALID` | bad token / account deleted | back to login |
+| 401 | `DEVICE_MISMATCH` | `X-Device-Id` missing or not the login device | back to login |
+| 401 | `SESSION_ENDED` | admin changed password / banned / reset device / kicked | back to login |
+| 403 | `BANNED` | banned (`reason` included) | show "banned" |
+
+Any 401 = call `/login` again (the player re-enters username + password).
+
+Future endpoints (scores, etc.) use the same two headers.
 
 ---
 

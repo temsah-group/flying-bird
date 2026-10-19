@@ -1,12 +1,12 @@
 {
   "info": {
-    "name": "Flying Bird - Game Login",
-    "description": "For the game developer: one request. Change baseUrl to the live server.",
+    "name": "Flying Bird - Game",
+    "description": "For the game developer: 1) Login  2) Play. Change baseUrl to the live server if needed.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Login",
+      "name": "1. Login",
       "request": {
         "method": "POST",
         "header": [
@@ -276,6 +276,275 @@
           ],
           "body": "{\n  \"ok\": false,\n  \"code\": \"TOO_MANY_ATTEMPTS\",\n  \"message\": \"too many attempts, try again in 840s\",\n  \"retryAfterSec\": 840\n}"
         }
+      ],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().token); console.log('token saved'); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Play",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "X-Device-Id",
+            "value": "{{deviceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/play",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "play"
+          ]
+        },
+        "description": "Call when the streamer presses PLAY / START. No body.\n\nHeaders:\n- Authorization: Bearer <token from Login>\n- X-Device-Id: <the SAME deviceId sent in Login>\n\nok: true -> start the game.\nAny 401 (NO_TOKEN, TOKEN_EXPIRED, TOKEN_INVALID, DEVICE_MISMATCH, SESSION_ENDED) -> go back to the login screen (call Login again).\n403 BANNED -> show \"account banned\" (+ reason).\n\nThe token ends when: it expires (24h), the admin bans / changes password / resets the device / deletes the account."
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{deviceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/play",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "play"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": true,\n  \"message\": \"ok to play\",\n  \"user\": {\n    \"username\": \"streamer1\",\n    \"gameId\": \"flying-bird\"\n  }\n}"
+        },
+        {
+          "name": "401 DEVICE_MISMATCH (other PC)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "ANOTHER-PC-9999"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/play",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "play"
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"DEVICE_MISMATCH\",\n  \"message\": \"token used from another device\"\n}"
+        },
+        {
+          "name": "401 TOKEN_EXPIRED",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{deviceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/play",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "play"
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"TOKEN_EXPIRED\",\n  \"message\": \"token expired, call /login again\"\n}"
+        },
+        {
+          "name": "401 SESSION_ENDED",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{deviceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/play",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "play"
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"SESSION_ENDED\",\n  \"message\": \"please log in again\"\n}"
+        },
+        {
+          "name": "401 NO_TOKEN",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/play",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "play"
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"NO_TOKEN\",\n  \"message\": \"missing token\"\n}"
+        },
+        {
+          "name": "403 BANNED",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "X-Device-Id",
+                "value": "{{deviceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/play",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "play"
+              ]
+            }
+          },
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"BANNED\",\n  \"message\": \"this account is banned\",\n  \"reason\": \"sharing account\"\n}"
+        }
       ]
     }
   ],
@@ -299,6 +568,10 @@
     {
       "key": "deviceId",
       "value": "A1B2C3D4E5F6A7B8"
+    },
+    {
+      "key": "token",
+      "value": ""
     }
   ]
 }

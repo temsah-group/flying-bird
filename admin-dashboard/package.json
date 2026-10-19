@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:file": "vite build -c vite.single.config.js"
+    "build:file": "vite build -c vite.single.config.js",
+    "build:server": "vite build -c vite.single.config.js --mode server --outDir ../server/public --emptyOutDir"
   },
   "dependencies": {
     "react": "18.3.1",
