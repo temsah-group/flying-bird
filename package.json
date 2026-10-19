@@ -1,0 +1,9 @@
+{
+  "name": "flying-bird",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix admin-dashboard install",
+    "start": "npm --prefix server start",
+    "dashboard": "npm --prefix admin-dashboard run dev"
+  }
+}

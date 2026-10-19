@@ -1,0 +1,5 @@
+node_modules/
+server/.env
+admin-dashboard/dist/
+admin-dashboard/dist-single/
+.env
