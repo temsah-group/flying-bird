@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * One modal for all admin actions.
- *  input: undefined (just confirm) | { label, type, minLength, placeholder, required }
+ *  input: undefined (just confirm) | { label, type, minLength, placeholder, required, initial }
  */
 export default function Modal({ title, message, confirmText, danger, input, onConfirm, onClose }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState((input && input.initial) || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const firstRef = useRef(null);

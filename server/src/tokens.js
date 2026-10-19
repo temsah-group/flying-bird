@@ -3,23 +3,22 @@ const jwt = require("jsonwebtoken");
 const config = require("./config");
 
 const sha256 = (s) => crypto.createHash("sha256").update(String(s)).digest("hex");
-const newRefreshToken = () => crypto.randomBytes(32).toString("hex");
-const newSessionId = () => crypto.randomBytes(12).toString("hex");
 
-// Short fingerprint of the device, stored inside the access token.
+// Short fingerprint of the device, stored inside the token.
 const deviceHash = (deviceId) => sha256("device:" + deviceId).slice(0, 32);
 
-// ---------- Player access token (short lived, not stored in the database) ----------
-// Bound to: the session (sid) + the device (dh). Useless on another device.
-function signAccessToken(user, sid, deviceId) {
+// ---------- Player token (returned by /login) ----------
+// Bound to the device (dh) and to the account's tokenVersion (tv),
+// so reset-device / ban / new password / kick make old tokens useless.
+function signPlayerToken(user, deviceId) {
   return jwt.sign(
-    { sub: String(user._id), game: user.gameId, name: user.username, sid, dh: deviceHash(deviceId) },
+    { sub: String(user._id), game: user.gameId, name: user.username, dh: deviceHash(deviceId), tv: user.tokenVersion || 0 },
     config.jwtSecret,
-    { expiresIn: config.accessTtlSec, audience: "player" }
+    { expiresIn: config.tokenTtlSec, audience: "player" }
   );
 }
 
-function verifyAccessToken(token) {
+function verifyPlayerToken(token) {
   return jwt.verify(token, config.jwtSecret, { audience: "player" }); // throws on expired/invalid
 }
 
@@ -44,11 +43,9 @@ function safeEqual(a, b) {
 
 module.exports = {
   sha256,
-  newRefreshToken,
-  newSessionId,
   deviceHash,
-  signAccessToken,
-  verifyAccessToken,
+  signPlayerToken,
+  verifyPlayerToken,
   signAdminToken,
   verifyAdminToken,
   safeEqual,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatNumber, shortDay } from "../format.js";
 
-// Single-series bar chart: sign-ups per day (last 14 days).
+// Single-series bar chart: successful logins per day (last 14 days).
 // One series -> no legend (title names it). Hover tooltip per bar. Table view for accessibility.
 
 const W = 560;
@@ -23,7 +23,7 @@ export default function SignupsChart({ data }) {
   return (
     <section className="card">
       <div className="card-head">
-        <h2 className="card-title">التسجيلات في آخر 14 يوم</h2>
+        <h2 className="card-title">عمليات الدخول في آخر 14 يوم</h2>
         <button className="btn btn-small btn-ghost" onClick={() => setAsTable((v) => !v)}>
           {asTable ? "عرض كرسم" : "عرض كجدول"}
         </button>
@@ -34,7 +34,7 @@ export default function SignupsChart({ data }) {
       ) : asTable ? (
         <table className="mini-table">
           <thead>
-            <tr><th>اليوم</th><th>التسجيلات</th></tr>
+            <tr><th>اليوم</th><th>عمليات الدخول</th></tr>
           </thead>
           <tbody>
             {[...data].reverse().map((d) => (
@@ -68,7 +68,7 @@ function Chart({ data, hover, setHover }) {
   // Chart reads left -> right in time even in an RTL page.
   return (
     <div className="chart-wrap" dir="ltr">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="عدد التسجيلات في كل يوم" className="chart">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="عدد عمليات الدخول الناجحة في كل يوم" className="chart">
         {ticks.map((t) => (
           <g key={t}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className={t === 0 ? "axis" : "grid"} />
@@ -120,7 +120,7 @@ function Chart({ data, hover, setHover }) {
           style={tooltipPos(((PAD.left + slot * hover + slot / 2) / W) * 100)}
           role="status"
         >
-          <strong className="num">{formatNumber(data[hover].count)}</strong> تسجيل
+          <strong className="num">{formatNumber(data[hover].count)}</strong> دخول
           <span className="muted"> · {shortDay(data[hover].date)}</span>
         </div>
       )}

@@ -32,7 +32,7 @@ app.get("/health", (_req, res) => res.json({ ok: true, games: [...config.games] 
 app.use("/api/admin", adminRoutes);
 app.use("/api", authRoutes);
 
-// Example of a protected game endpoint — copy this pattern for score, save, etc.
+// Example of a future protected game endpoint (needs the token from /login):
 // const requireAuth = require("./middleware/requireAuth");
 // app.post("/api/score", requireAuth, async (req, res) => {
 //   // req.user is the logged-in player

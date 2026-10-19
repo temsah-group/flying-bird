@@ -1,7 +1,7 @@
 {
   "name": "game-auth-server",
   "version": "1.0.0",
-  "description": "Reusable auth server for multiple games: access + refresh tokens, one active device per user",
+  "description": "Reusable auth server for multiple games: admin-created accounts locked to one device",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

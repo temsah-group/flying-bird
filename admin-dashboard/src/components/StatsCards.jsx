@@ -2,12 +2,11 @@ import { formatNumber } from "../format.js";
 
 export default function StatsCards({ stats }) {
   const cards = [
-    { key: "totalUsers", label: "إجمالي اليوزرات" },
-    { key: "onlineNow", label: "أونلاين دلوقتي", dot: "good" },
-    { key: "newToday", label: "اتسجلوا النهارده" },
-    { key: "newLast7Days", label: "آخر 7 أيام" },
+    { key: "totalUsers", label: "إجمالي الحسابات" },
+    { key: "loggedInToday", label: "دخلوا النهارده", dot: "good" },
+    { key: "notBound", label: "لسه ماربطوش جهاز" },
+    { key: "wrongDeviceAttempts", label: "محاولات من جهاز تاني (7 أيام)", dot: "warning" },
     { key: "bannedUsers", label: "محظورين", dot: "critical" },
-    { key: "securityAlerts", label: "تنبيهات أمنية (7 أيام)", dot: "warning" },
   ];
 
   return (

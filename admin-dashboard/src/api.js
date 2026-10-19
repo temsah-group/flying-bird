@@ -61,6 +61,14 @@ async function request(method, path, body) {
       setToken("");
       onUnauthorized();
     }
+    if (!data.code) {
+      // Not one of our JSON errors (e.g. Express "Cannot POST" page)
+      const msg =
+        res.status === 404
+          ? "السيرفر مش لاقي الطلب ده (404). غالباً السيرفر لسه شغال بالنسخة القديمة: اعمل push و redeploy"
+          : `السيرفر رد بخطأ ${res.status}`;
+      throw new ApiError(res.status, "HTTP_" + res.status, msg);
+    }
     throw new ApiError(res.status, data.code, data.message);
   }
   return data;
@@ -85,6 +93,10 @@ export const api = {
   games: () => request("GET", "/admin/games"),
   stats: (gameId) => request("GET", "/admin/stats" + qs({ gameId })),
   users: (params) => request("GET", "/admin/users" + qs(params)),
+  createUser: (data) => request("POST", "/admin/users", data),
+  user: (id) => request("GET", `/admin/users/${id}`),
+  setNote: (id, note) => request("PATCH", `/admin/users/${id}`, { note }),
+  resetDevice: (id) => request("POST", `/admin/users/${id}/reset-device`, {}),
   kick: (id) => request("POST", `/admin/users/${id}/kick`, {}),
   ban: (id, reason) => request("POST", `/admin/users/${id}/ban`, { reason }),
   unban: (id) => request("POST", `/admin/users/${id}/unban`, {}),
@@ -100,7 +112,9 @@ const MESSAGES = {
   TOO_MANY_ATTEMPTS: "محاولات كتير غلط، استنى 5 دقايق",
   ADMIN_DISABLED: "الداش بورد مقفولة: حط ADMIN_PASSWORD في .env بتاع السيرفر",
   INVALID_INPUT: "البيانات مش صح",
-  NOT_FOUND: "اليوزر مش موجود",
+  NOT_FOUND: "الحساب مش موجود",
+  USERNAME_TAKEN: "اليوزر ده موجود قبل كده",
+  UNKNOWN_GAME: "اللعبة دي مش متضافة في GAMES في السيرفر",
   SERVER_ERROR: "حصل خطأ في السيرفر",
 };
 

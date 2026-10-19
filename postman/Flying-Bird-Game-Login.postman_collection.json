@@ -1,0 +1,304 @@
+{
+  "info": {
+    "name": "Flying Bird - Game Login",
+    "description": "For the game developer: one request. Change baseUrl to the live server.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "The only endpoint the game needs.\n\n- Send username + password (given by the admin) + a deviceId unique to this PC (8-64 chars: letters, numbers, -). Use the SAME deviceId every time on the same PC.\n- First successful login locks the account to that deviceId. Another PC gets 403 WRONG_DEVICE.\n- ok: true = allowed to play. Call it on game start (and whenever you want to re-check).\n- Any error body: { ok: false, code, message }. Show the player a message based on `code`.\n- token: keep it for future endpoints (not needed now).\n\nSee the saved Examples (right side) for every possible response."
+      },
+      "response": [
+        {
+          "name": "200 OK (first time locks the device)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": true,\n  \"message\": \"login successful\",\n  \"token\": \"eyJhbGciOi...\",\n  \"expiresIn\": 86400,\n  \"user\": {\n    \"username\": \"streamer1\",\n    \"gameId\": \"flying-bird\"\n  }\n}"
+        },
+        {
+          "name": "401 WRONG_CREDENTIALS",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"WRONG_CREDENTIALS\",\n  \"message\": \"invalid username or password\"\n}"
+        },
+        {
+          "name": "403 WRONG_DEVICE",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"ANOTHER-PC-9999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"WRONG_DEVICE\",\n  \"message\": \"this account is locked to another device\"\n}"
+        },
+        {
+          "name": "403 BANNED",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"BANNED\",\n  \"message\": \"this account is banned\",\n  \"reason\": \"sharing account\"\n}"
+        },
+        {
+          "name": "400 INVALID_INPUT",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"INVALID_INPUT\",\n  \"message\": \"deviceId must be 8-64 chars: letters, numbers, -\"\n}"
+        },
+        {
+          "name": "429 TOO_MANY_ATTEMPTS",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{gameId}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{deviceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "Too Many Requests",
+          "code": 429,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"ok\": false,\n  \"code\": \"TOO_MANY_ATTEMPTS\",\n  \"message\": \"too many attempts, try again in 840s\",\n  \"retryAfterSec\": 840\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://dodgerblue-jackal-575473.hostingersite.com/api"
+    },
+    {
+      "key": "gameId",
+      "value": "flying-bird"
+    },
+    {
+      "key": "username",
+      "value": "streamer1"
+    },
+    {
+      "key": "password",
+      "value": "stream123"
+    },
+    {
+      "key": "deviceId",
+      "value": "A1B2C3D4E5F6A7B8"
+    }
+  ]
+}

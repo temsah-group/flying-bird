@@ -46,9 +46,10 @@ npm run build:file
 | `src/App.jsx` | بيختار يعرض شاشة الدخول ولا الداش بورد |
 | `src/components/LoginPage.jsx` | شاشة باسورد الأدمن |
 | `src/components/Dashboard.jsx` | الصفحة الرئيسية: اختيار اللعبة، وتحديث تلقائي كل 15 ثانية |
-| `src/components/StatsCards.jsx` | كروت الأرقام: الإجمالي، الأونلاين، الجداد، المحظورين |
-| `src/components/SignupsChart.jsx` | رسم التسجيلات في آخر 14 يوم (وفيه زرار يعرضه كجدول) |
-| `src/components/UsersTable.jsx` | جدول اليوزرات: بحث، فلتر، صفحات، وأزرار طرد / حظر / باسورد / حذف |
+| `src/components/StatsCards.jsx` | كروت الأرقام: الإجمالي، دخلوا النهارده، لسه ماربطوش جهاز، محاولات من جهاز تاني، المحظورين |
+| `src/components/SignupsChart.jsx` | رسم عمليات الدخول في آخر 14 يوم (وفيه زرار يعرضه كجدول) |
+| `src/components/UsersTable.jsx` | جدول الحسابات: بحث، فلتر، الجهاز المربوط، وأزرار فك ربط الجهاز / حظر / باسورد / ملاحظة / حذف |
+| `src/components/CreateUserModal.jsx` | عمل حساب جديد لاستريمر وعرض اليوزر والباسورد للنسخ |
 | `src/components/Modal.jsx` | نافذة التأكيد قبل أي إجراء |
 | `src/format.js` | تنسيق التواريخ والأرقام |
 | `src/styles.css` | الشكل (فاتح وغامق حسب إعداد الجهاز) |

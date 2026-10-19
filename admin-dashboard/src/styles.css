@@ -130,7 +130,7 @@ h1 { font-size: 18px; font-weight: 700; }
 /* ---------- stat tiles ---------- */
 .stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
 }
 @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3, 1fr); } }
@@ -323,3 +323,12 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
   .stat-value { font-size: 24px; }
   .search { min-width: 0; flex: 1; }
 }
+
+/* ---------- streamer accounts ---------- */
+.filters-row { justify-content: space-between; margin-bottom: 12px; }
+.small { font-size: 12px; }
+.user-note { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--surface-2); padding: 2px 6px; border-radius: 6px; }
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; }
+.creds { font-family: ui-monospace, Consolas, monospace; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left; white-space: pre-wrap; user-select: all; }

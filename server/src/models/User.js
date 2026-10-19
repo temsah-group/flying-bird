@@ -1,39 +1,27 @@
 const mongoose = require("mongoose");
 
-// The one active login of this user (one device at a time).
-const sessionSchema = new mongoose.Schema(
-  {
-    sid: { type: String, required: true },         // session id, also inside every access token
-    refreshHash: { type: String, required: true }, // sha256 of the CURRENT refresh token (never the token itself)
-    usedHashes: { type: [String], default: [] },   // last refresh tokens already used -> reuse = theft
-    deviceId: { type: String, required: true },    // the only device allowed to use this session
-    lastActive: { type: Date, required: true },    // updated by heartbeat / refresh
-    expiresAt: { type: Date, required: true },     // refresh token expiry
-  },
-  { _id: false }
-);
-
-const securityEventSchema = new mongoose.Schema(
-  {
-    type: String, // REFRESH_TOKEN_REUSED | REFRESH_TOKEN_OTHER_DEVICE | ACCESS_TOKEN_OTHER_DEVICE
-    at: Date,
-    ip: String,
-  },
-  { _id: false }
-);
-
+// An account created by the admin and given to a streamer.
 const userSchema = new mongoose.Schema(
   {
     gameId: { type: String, required: true, lowercase: true, trim: true },
     username: { type: String, required: true, lowercase: true, trim: true },
     password: { type: String, required: true }, // bcrypt hash
-    session: { type: sessionSchema, default: null },
+    note: { type: String, default: "" },         // e.g. streamer name / channel
+
+    // Device lock: set on the first successful login, then only this device can log in.
+    deviceId: { type: String, default: null },
+    deviceBoundAt: { type: Date, default: null },
+
+    // Bumped to invalidate all tokens (reset device, ban, new password, kick).
+    tokenVersion: { type: Number, default: 0 },
+
     lastLoginAt: { type: Date, default: null },
+    lastLoginIp: { type: String, default: "" },
 
-    // Last suspicious token use (shown in the admin dashboard)
-    securityEvent: { type: securityEventSchema, default: null },
+    // Last time someone tried this account from ANOTHER device (shown as an alert).
+    lastRejectedDeviceAt: { type: Date, default: null },
+    lastRejectedDeviceId: { type: String, default: null },
 
-    // Set by admin
     banned: { type: Boolean, default: false },
     banReason: { type: String, default: "" },
     bannedAt: { type: Date, default: null },
@@ -43,8 +31,6 @@ const userSchema = new mongoose.Schema(
 
 // Same username can exist in different games, but only once per game.
 userSchema.index({ gameId: 1, username: 1 }, { unique: true });
-userSchema.index({ "session.refreshHash": 1 }, { sparse: true });
-userSchema.index({ "session.usedHashes": 1 }, { sparse: true });
 userSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("User", userSchema);

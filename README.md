@@ -2,11 +2,20 @@
 
 ```
 flying bird/
-├── server/      سيرفر الـ Auth (Express + MongoDB) — يخدم أكتر من لعبة
+├── server/           سيرفر الـ Auth (Express + MongoDB) — يخدم أكتر من لعبة
 ├── admin-dashboard/  داش بورد الأدمن (React) — فرونت منفصل
-├── postman/     كولكشن Postman فيه كل الـ endpoints
-└── API.md       شرح كل الـ endpoints
+├── postman/          كولكشن Postman
+└── API.md            شرح الـ endpoints
 ```
+
+## الفكرة
+
+1. الأدمن بيعمل حساب للاستريمر من الداش بورد (يوزر + باسورد) ويبعتهوله.
+2. اللعبة بتبعت `POST /api/login` فيه اليوزر والباسورد والـ `deviceId`.
+3. **أول دخول** بيقفل الحساب على الجهاز ده. بعد كده أي جهاز تاني بياخد `WRONG_DEVICE`.
+4. اللعبة تقدر تعمل `/login` كل مرة عايزة تتأكد، والرد `ok: true` معناه مسموح.
+5. لو الاستريمر غيّر جهازه، الأدمن بيدوس **فك ربط الجهاز**.
+6. الحساب شغال لحد ما الأدمن يحظره أو يمسحه.
 
 ## تشغيل السيرفر
 
@@ -22,33 +31,23 @@ npm start
 - `JWT_SECRET`
 - `ADMIN_PASSWORD`: باسورد دخول الداش بورد
 
-باقي الإعدادات موجودة في `server/.env.example`.
-
-## الفكرة
-
-1. **Login**: السيرفر بيرجّع access token (عمره 15 دقيقة) و refresh token (عمره 30 يوم).
-2. **أي طلب**: بيتبعت ومعاه `Authorization: Bearer <access>`.
-3. **لما الـ access token يخلص**: الـ client بيعمل `/refresh`، فياخد توكنين جداد، والـ refresh القديم بيبطل يشتغل.
-4. **Heartbeat** بيتبعت كل 30 ثانية. ده بيمنع إن نفس الحساب يدخل من جهاز تاني طول ما اللاعب شغال.
-5. **لو اللعبة اتقفلت أو وقعت**: بعد دقيقتين، الحساب يقدر يدخل من جهاز تاني.
+باقي الإعدادات (`GAMES` و `TOKEN_HOURS` و `LOGIN_LOG_DAYS` ...) موجودة في `server/.env.example`.
 
 ## لعبة جديدة
 
 1. ضيف اسم اللعبة في `GAMES` في ملف `.env`.
-2. اللعبة الجديدة تبعت اسمها في `gameId` مع كل طلب.
+2. اللعبة الجديدة تبعت اسمها في `gameId`.
 
 ## الداش بورد
 
 ```
-cd admin-dashboard
-npm install
-npm run dev
+npm run dashboard
 ```
+
 افتح http://localhost:5173
 
 ## Postman
 
-1. Import لملف `postman/Flying-Bird-Auth.postman_collection.json`.
-2. في تاب **Variables** حط `adminPassword`.
-3. شغّل الطلبات بالترتيب. التوكنات بتتحفظ لوحدها بعد Login و Refresh و Admin login.
-4. فولدر **Security (hacker tests)** بيجرب سرقة التوكنات وبيتأكد إن السيرفر بيقفل الجلسة.
+1. اعمل Import لملف `postman/Flying-Bird-Auth.postman_collection.json`.
+2. في تاب **Variables** حط `adminPassword`، ولو هتجرب على السيرفر الأونلاين غيّر `baseUrl`.
+3. شغّل الطلبات بالترتيب من 1 لـ 21، أو دوس Run collection. التوكنات والـ `userId` بيتحفظوا لوحدهم.

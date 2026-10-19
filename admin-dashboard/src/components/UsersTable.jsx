@@ -2,16 +2,18 @@ import { useEffect, useState } from "react";
 import { api, errorText } from "../api.js";
 import { formatDate, formatDateTime, formatNumber, timeAgo } from "../format.js";
 import Modal from "./Modal.jsx";
+import CreateUserModal from "./CreateUserModal.jsx";
 
 const TABS = [
   { key: "all", label: "الكل" },
-  { key: "online", label: "أونلاين" },
+  { key: "unbound", label: "ماربطش جهاز" },
+  { key: "alerts", label: "محاولات من جهاز تاني" },
   { key: "banned", label: "محظورين" },
-  { key: "alerts", label: "تنبيهات أمنية" },
 ];
 const LIMIT = 20;
+const shortId = (id) => (id.length > 14 ? id.slice(0, 6) + "…" + id.slice(-4) : id);
 
-export default function UsersTable({ gameId, tick, onChanged, notify }) {
+export default function UsersTable({ gameId, games = [], tick, onChanged, notify }) {
   const [status, setStatus] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -19,6 +21,7 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [modal, setModal] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   // Debounce search typing
   useEffect(() => {
@@ -58,48 +61,55 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
   };
 
   const open = {
-    kick: (u) =>
+    resetDevice: (u) =>
       setModal({
-        title: `طرد ${u.username}`,
-        message: "اللاعب هيخرج من اللعبة دلوقتي ويرجع لشاشة اللوجين. يقدر يدخل تاني عادي.",
-        confirmText: "اطرد",
-        onConfirm: act(() => api.kick(u.id), `تم طرد ${u.username}`),
+        title: `فك ربط جهاز ${u.username}`,
+        message: "الحساب هيتفك من الجهاز الحالي، وأول جهاز يدخل بعد كده هيتقفل عليه. استخدمها لو الاستريمر غيّر جهازه.",
+        confirmText: "فك الربط",
+        onConfirm: act(() => api.resetDevice(u.id), `تم فك ربط جهاز ${u.username}`),
       }),
     ban: (u) =>
       setModal({
         title: `حظر ${u.username}`,
-        message: "اللاعب هيخرج من اللعبة ومش هيقدر يدخل تاني لحد ما تفك الحظر.",
+        message: "الاستريمر مش هيقدر يعمل لوجين لحد ما تفك الحظر.",
         confirmText: "احظر",
         danger: true,
-        input: { label: "السبب (اختياري)", placeholder: "مثلاً: غش" },
+        input: { label: "السبب (اختياري)", placeholder: "مثلاً: شارك الحساب" },
         onConfirm: act((reason) => api.ban(u.id, reason), `تم حظر ${u.username}`),
       }),
     unban: (u) =>
       setModal({
         title: `فك حظر ${u.username}`,
-        message: "اللاعب هيقدر يدخل اللعبة تاني.",
+        message: "الاستريمر هيقدر يدخل تاني.",
         confirmText: "فك الحظر",
         onConfirm: act(() => api.unban(u.id), `تم فك حظر ${u.username}`),
       }),
     password: (u) =>
       setModal({
         title: `باسورد جديد لـ ${u.username}`,
-        message: "اللاعب هيخرج من اللعبة ويدخل بالباسورد الجديد.",
+        message: "الباسورد القديم هيبطل. ابعت الجديد للاستريمر. الجهاز المربوط مش هيتغير.",
         confirmText: "غيّر الباسورد",
         input: { label: "الباسورد الجديد", type: "text", minLength: 6, required: true },
         onConfirm: act((pw) => api.setPassword(u.id, pw), `تم تغيير باسورد ${u.username}`),
       }),
+    note: (u) =>
+      setModal({
+        title: `ملاحظة على ${u.username}`,
+        confirmText: "احفظ",
+        input: { label: "الملاحظة", placeholder: "مثلاً: أحمد - تويتش", initial: u.note },
+        onConfirm: act((note) => api.setNote(u.id, note), "تم حفظ الملاحظة"),
+      }),
     clearAlert: (u) =>
       setModal({
-        title: `تنبيه أمني: ${u.username}`,
-        message: `${ALERT_TEXT[u.securityEvent.type] || u.securityEvent.type} — ${formatDateTime(u.securityEvent.at)} من IP ${u.securityEvent.ip || "؟"}. السيرفر قفل الجلسة تلقائياً. لو شاكك إن الباسورد اتسرق، غيّره من زرار "باسورد".`,
+        title: `محاولة دخول من جهاز تاني: ${u.username}`,
+        message: `في ${formatDateTime(u.wrongDevice.at)} حد دخل اليوزر والباسورد الصح من جهاز تاني (${u.wrongDevice.deviceId}) والسيرفر رفضه. لو الاستريمر غيّر جهازه اعمل "فك ربط الجهاز". لو مش هو، غيّر الباسورد.`,
         confirmText: "تمت المراجعة",
-        onConfirm: act(() => api.clearAlert(u.id), `تم إخفاء التنبيه`),
+        onConfirm: act(() => api.clearAlert(u.id), "تم إخفاء التنبيه"),
       }),
     remove: (u) =>
       setModal({
         title: `حذف ${u.username}`,
-        message: "الحساب هيتمسح نهائي ومش هينفع ترجّعه.",
+        message: "الحساب وسجل دخوله هيتمسحوا نهائي.",
         confirmText: "احذف نهائي",
         danger: true,
         onConfirm: act(() => api.remove(u.id), `تم حذف ${u.username}`),
@@ -112,30 +122,31 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
     <section className="card">
       <div className="card-head wrap">
         <h2 className="card-title">
-          اليوزرات {data && <span className="muted num">({formatNumber(data.total)})</span>}
+          الحسابات {data && <span className="muted num">({formatNumber(data.total)})</span>}
         </h2>
-        <div className="filters">
-          <div className="tabs" role="tablist">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                role="tab"
-                aria-selected={status === t.key}
-                className={`tab ${status === t.key ? "tab-active" : ""}`}
-                onClick={() => setStatus(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <input
-            className="search"
-            type="search"
-            placeholder="ابحث باليوزر..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
+        <button className="btn btn-primary" onClick={() => setCreating(true)}>+ حساب جديد</button>
+      </div>
+      <div className="filters filters-row">
+        <div className="tabs" role="tablist">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={status === t.key}
+              className={`tab ${status === t.key ? "tab-active" : ""}`}
+              onClick={() => setStatus(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
+        <input
+          className="search"
+          type="search"
+          placeholder="ابحث باليوزر أو الملاحظة..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
       </div>
 
       {error && <p className="banner-error" role="alert">{error}</p>}
@@ -146,10 +157,10 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
             <tr>
               <th>اليوزر</th>
               <th>اللعبة</th>
+              <th>الجهاز</th>
               <th>الحالة</th>
-              <th>آخر نشاط</th>
               <th>آخر دخول</th>
-              <th>اتسجل</th>
+              <th>اتعمل</th>
               <th className="actions-col">إجراءات</th>
             </tr>
           </thead>
@@ -163,32 +174,44 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
 
             {data && users.length === 0 && (
               <tr>
-                <td colSpan={7} className="empty">مفيش يوزرات</td>
+                <td colSpan={7} className="empty">مفيش حسابات</td>
               </tr>
             )}
 
             {users.map((u) => (
               <tr key={u.id}>
-                <td className="username" dir="ltr">{u.username}</td>
+                <td>
+                  <div className="username" dir="ltr">{u.username}</div>
+                  {u.note && <div className="muted small user-note">{u.note}</div>}
+                </td>
                 <td><span className="chip">{u.gameId}</span></td>
+                <td>
+                  {u.deviceId ? (
+                    <span title={`${u.deviceId}\nاتربط ${formatDateTime(u.deviceBoundAt)}`}>
+                      <code className="device" dir="ltr">{shortId(u.deviceId)}</code>
+                      <div className="muted small">{formatDate(u.deviceBoundAt)}</div>
+                    </span>
+                  ) : (
+                    <span className="muted">لسه ماربطش</span>
+                  )}
+                </td>
                 <td>
                   <div className="status-cell">
                     <StatusBadge user={u} />
-                    {u.securityEvent && (
+                    {u.wrongDevice && (
                       <button className="badge badge-warning badge-btn" onClick={() => open.clearAlert(u)}
-                        title={formatDateTime(u.securityEvent.at)}>
-                        <span className="dot dot-warning" aria-hidden="true" /> تنبيه أمني
+                        title={formatDateTime(u.wrongDevice.at)}>
+                        <span className="dot dot-warning" aria-hidden="true" /> جهاز تاني حاول
                       </button>
                     )}
                   </div>
                 </td>
-                <td title={formatDateTime(u.lastActive)}>{u.online || u.lastActive ? timeAgo(u.lastActive) : "—"}</td>
                 <td title={formatDateTime(u.lastLoginAt)}>{u.lastLoginAt ? timeAgo(u.lastLoginAt) : "—"}</td>
                 <td>{formatDate(u.createdAt)}</td>
                 <td className="actions">
-                  <button className="btn btn-small" disabled={!u.online} onClick={() => open.kick(u)}
-                    title={u.online ? "" : "مش أونلاين"}>
-                    طرد
+                  <button className="btn btn-small" disabled={!u.deviceId} onClick={() => open.resetDevice(u)}
+                    title={u.deviceId ? "" : "مش مربوط بجهاز"}>
+                    فك ربط الجهاز
                   </button>
                   {u.banned ? (
                     <button className="btn btn-small" onClick={() => open.unban(u)}>فك الحظر</button>
@@ -196,6 +219,7 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
                     <button className="btn btn-small btn-danger-ghost" onClick={() => open.ban(u)}>حظر</button>
                   )}
                   <button className="btn btn-small" onClick={() => open.password(u)}>باسورد</button>
+                  <button className="btn btn-small" onClick={() => open.note(u)}>ملاحظة</button>
                   <button className="btn btn-small btn-danger-ghost" onClick={() => open.remove(u)}>حذف</button>
                 </td>
               </tr>
@@ -213,15 +237,20 @@ export default function UsersTable({ gameId, tick, onChanged, notify }) {
       )}
 
       {modal && <Modal {...modal} onClose={() => setModal(null)} />}
+      {creating && (
+        <CreateUserModal
+          games={games}
+          defaultGame={gameId !== "all" ? gameId : undefined}
+          onCreated={(u) => {
+            notify(`تم عمل حساب ${u.username}`);
+            onChanged();
+          }}
+          onClose={() => setCreating(false)}
+        />
+      )}
     </section>
   );
 }
-
-const ALERT_TEXT = {
-  REFRESH_TOKEN_REUSED: "حد استخدم refresh token قديم (غالباً اتسرق)",
-  REFRESH_TOKEN_OTHER_DEVICE: "الـ refresh token اتستخدم من جهاز تاني",
-  ACCESS_TOKEN_OTHER_DEVICE: "الـ access token اتستخدم من جهاز تاني",
-};
 
 function StatusBadge({ user }) {
   if (user.banned)
@@ -231,15 +260,15 @@ function StatusBadge({ user }) {
         {user.banReason && <span className="badge-note"> · {user.banReason}</span>}
       </span>
     );
-  if (user.online)
+  if (user.deviceId)
     return (
       <span className="badge badge-good">
-        <span className="dot dot-good" aria-hidden="true" /> أونلاين
+        <span className="dot dot-good" aria-hidden="true" /> شغال
       </span>
     );
   return (
     <span className="badge">
-      <span className="dot dot-muted" aria-hidden="true" /> أوفلاين
+      <span className="dot dot-muted" aria-hidden="true" /> مستني أول دخول
     </span>
   );
 }

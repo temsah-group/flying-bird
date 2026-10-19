@@ -13,16 +13,16 @@ module.exports = {
   dbName: (process.env.MONGO_DB_NAME || "game_auth").trim(),
   games: new Set(list(process.env.GAMES, "flying-bird").map((g) => g.toLowerCase())),
 
+  // Token returned by /login (for future game requests)
   jwtSecret: (process.env.JWT_SECRET || "").trim(),
-  accessTtlSec: num(process.env.ACCESS_TOKEN_MIN, 15) * 60,
-  refreshTtlMs: num(process.env.REFRESH_TOKEN_DAYS, 30) * 24 * 60 * 60 * 1000,
+  tokenTtlSec: num(process.env.TOKEN_HOURS, 24) * 3600,
 
-  heartbeatSec: num(process.env.HEARTBEAT_SEC, 30),
-  inactiveMs: num(process.env.SESSION_TIMEOUT_SEC, 120) * 1000,
-
-  // Brute-force protection for player login
+  // Brute-force protection for /login
   loginMaxAttempts: num(process.env.LOGIN_MAX_ATTEMPTS, 5),
   loginLockMs: num(process.env.LOGIN_LOCK_MIN, 15) * 60 * 1000,
+
+  // How long login history is kept (days)
+  loginLogDays: num(process.env.LOGIN_LOG_DAYS, 30),
 
   // Admin dashboard
   adminPassword: (process.env.ADMIN_PASSWORD || "").trim(),

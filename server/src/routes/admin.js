@@ -2,9 +2,12 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const LoginEvent = require("../models/LoginEvent");
 const config = require("../config");
 const requireAdmin = require("../middleware/requireAdmin");
+const { createLimiter } = require("../middleware/rateLimit");
 const { signAdminToken, safeEqual } = require("../tokens");
+const { validateUsername, validatePassword } = require("../rules");
 
 const router = express.Router();
 
@@ -18,35 +21,24 @@ const handle = (fn) => (req, res) =>
   });
 
 // ---------------------------------------------------------------------------
-// Brute-force protection for admin login: 5 wrong tries -> locked 5 minutes (per IP)
+// POST /api/admin/login  { password }   (5 wrong tries per IP -> locked 5 minutes)
 // ---------------------------------------------------------------------------
-const attempts = new Map(); // ip -> { count, lockedUntil }
-const MAX_TRIES = 5;
-const LOCK_MS = 5 * 60 * 1000;
+const adminLimiter = createLimiter({ max: 5, windowMs: 5 * 60 * 1000, lockMs: 5 * 60 * 1000 });
 
-// POST /api/admin/login  { password }
 router.post("/login", (req, res) => {
   if (!config.adminPassword)
     return fail(res, 503, "ADMIN_DISABLED", "set ADMIN_PASSWORD in .env to enable the dashboard");
 
-  const ip = req.ip;
-  const now = Date.now();
-  const a = attempts.get(ip) || { count: 0, lockedUntil: 0 };
-  if (a.lockedUntil > now)
-    return fail(res, 429, "TOO_MANY_ATTEMPTS", `try again in ${Math.ceil((a.lockedUntil - now) / 1000)}s`);
+  const key = `admin:${req.ip}`;
+  const locked = adminLimiter.lockedFor(key);
+  if (locked) return fail(res, 429, "TOO_MANY_ATTEMPTS", `try again in ${locked}s`);
 
   const { password } = req.body || {};
   if (typeof password !== "string" || !safeEqual(password, config.adminPassword)) {
-    a.count += 1;
-    if (a.count >= MAX_TRIES) {
-      a.count = 0;
-      a.lockedUntil = now + LOCK_MS;
-    }
-    attempts.set(ip, a);
+    adminLimiter.fail(key);
     return fail(res, 401, "WRONG_PASSWORD", "wrong admin password");
   }
-
-  attempts.delete(ip);
+  adminLimiter.reset(key);
   res.json({ ok: true, token: signAdminToken(), expiresIn: config.adminTokenHours * 3600 });
 });
 
@@ -57,36 +49,26 @@ router.use(requireAdmin);
 // Helpers
 // ---------------------------------------------------------------------------
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const DAY = 86400000;
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const dayKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-function onlineFilter(now) {
-  return {
-    "session.lastActive": { $gte: new Date(now.getTime() - config.inactiveMs) },
-    "session.expiresAt": { $gt: now },
-  };
-}
-
-function isOnline(u, now) {
-  return (
-    !!u.session &&
-    new Date(u.session.expiresAt) > now &&
-    now - new Date(u.session.lastActive) < config.inactiveMs
-  );
-}
-
-function toAdminUser(u, now) {
+function toAdminUser(u) {
   return {
     id: String(u._id),
     gameId: u.gameId,
     username: u.username,
-    createdAt: u.createdAt,
+    note: u.note || "",
+    deviceId: u.deviceId || null,
+    deviceBoundAt: u.deviceBoundAt || null,
     lastLoginAt: u.lastLoginAt || null,
-    online: isOnline(u, now),
-    deviceId: u.session ? u.session.deviceId : null,
-    lastActive: u.session ? u.session.lastActive : null,
+    lastLoginIp: u.lastLoginIp || "",
+    wrongDevice: u.lastRejectedDeviceAt ? { at: u.lastRejectedDeviceAt, deviceId: u.lastRejectedDeviceId } : null,
     banned: !!u.banned,
     banReason: u.banReason || "",
     bannedAt: u.bannedAt || null,
-    securityEvent: u.securityEvent && u.securityEvent.type ? u.securityEvent : null,
+    createdAt: u.createdAt,
   };
 }
 
@@ -105,79 +87,75 @@ async function findUserOr404(req, res) {
   return user;
 }
 
-const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const dayKey = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+async function update(req, res, changes, message) {
+  if (!mongoose.isValidObjectId(req.params.id)) return fail(res, 404, "NOT_FOUND", "user not found");
+  const user = await User.findByIdAndUpdate(req.params.id, changes, { new: true });
+  if (!user) return fail(res, 404, "NOT_FOUND", "user not found");
+  res.json({ ok: true, message, user: toAdminUser(user) });
+}
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/games
 // ---------------------------------------------------------------------------
-router.get("/games", (_req, res) => {
-  res.json({ ok: true, games: [...config.games] });
-});
+router.get("/games", (_req, res) => res.json({ ok: true, games: [...config.games] }));
 
 // ---------------------------------------------------------------------------
-// GET /api/admin/stats?gameId=flying-bird   (gameId optional = all games)
+// GET /api/admin/stats?gameId=
 // ---------------------------------------------------------------------------
 router.get("/stats", handle(async (req, res) => {
-  const now = new Date();
   const base = gameFilter(req);
+  const now = new Date();
   const today = startOfDay(now);
-  const weekAgo = new Date(today.getTime() - 6 * 86400000);
+  const weekAgo = new Date(today.getTime() - 6 * DAY);
 
-  const [totalUsers, onlineNow, bannedUsers, newToday, newLast7Days, securityAlerts] = await Promise.all([
+  const [totalUsers, loggedInToday, notBound, bannedUsers, wrongDeviceAttempts] = await Promise.all([
     User.countDocuments(base),
-    User.countDocuments({ ...base, ...onlineFilter(now) }),
+    User.countDocuments({ ...base, lastLoginAt: { $gte: today } }),
+    User.countDocuments({ ...base, deviceId: null }),
     User.countDocuments({ ...base, banned: true }),
-    User.countDocuments({ ...base, createdAt: { $gte: today } }),
-    User.countDocuments({ ...base, createdAt: { $gte: weekAgo } }),
-    User.countDocuments({ ...base, "securityEvent.at": { $gte: weekAgo } }),
+    LoginEvent.countDocuments({ ...base, code: "WRONG_DEVICE", at: { $gte: weekAgo } }),
   ]);
 
-  // Sign-ups per day, last 14 days (oldest first)
+  // Successful logins per day, last 14 days (oldest first)
   const days = [];
-  for (let i = 13; i >= 0; i--) {
-    const from = new Date(today.getTime() - i * 86400000);
-    days.push({ from, to: new Date(from.getTime() + 86400000) });
-  }
+  for (let i = 13; i >= 0; i--) days.push(new Date(today.getTime() - i * DAY));
   const counts = await Promise.all(
-    days.map((d) => User.countDocuments({ ...base, createdAt: { $gte: d.from, $lt: d.to } }))
+    days.map((d) => LoginEvent.countDocuments({ ...base, ok: true, at: { $gte: d, $lt: new Date(d.getTime() + DAY) } }))
   );
-  const signupsPerDay = days.map((d, i) => ({ date: dayKey(d.from), count: counts[i] }));
+  const loginsPerDay = days.map((d, i) => ({ date: dayKey(d), count: counts[i] }));
 
-  // Users per game
   const games = [...config.games];
   const perGameCounts = await Promise.all(games.map((g) => User.countDocuments({ gameId: g })));
   const perGame = games.map((g, i) => ({ gameId: g, users: perGameCounts[i] }));
 
   res.json({
     ok: true,
-    stats: { totalUsers, onlineNow, bannedUsers, newToday, newLast7Days, securityAlerts, signupsPerDay, perGame },
+    stats: { totalUsers, loggedInToday, notBound, bannedUsers, wrongDeviceAttempts, loginsPerDay, perGame },
   });
 }));
 
 // ---------------------------------------------------------------------------
-// GET /api/admin/users?gameId=&search=&status=all|online|banned|alerts&page=1&limit=20
+// GET /api/admin/users?gameId=&search=&status=all|bound|unbound|banned|alerts&page=&limit=
 // ---------------------------------------------------------------------------
 router.get("/users", handle(async (req, res) => {
-  const now = new Date();
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
-  const search = String(req.query.search || "").trim().toLowerCase();
+  const search = String(req.query.search || "").trim();
   const status = String(req.query.status || "all");
 
   const filter = { ...gameFilter(req) };
-  if (search) filter.username = { $regex: escapeRegex(search) };
-  if (status === "online") Object.assign(filter, onlineFilter(now));
+  if (search) {
+    const rx = { $regex: escapeRegex(search), $options: "i" };
+    filter.$or = [{ username: rx }, { note: rx }];
+  }
+  if (status === "bound") filter.deviceId = { $ne: null };
+  if (status === "unbound") filter.deviceId = null;
   if (status === "banned") filter.banned = true;
-  if (status === "alerts") filter["securityEvent.type"] = { $exists: true, $ne: null };
+  if (status === "alerts") filter.lastRejectedDeviceAt = { $ne: null };
 
   const [total, users] = await Promise.all([
     User.countDocuments(filter),
-    User.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit),
+    User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
   ]);
 
   res.json({
@@ -186,91 +164,92 @@ router.get("/users", handle(async (req, res) => {
     limit,
     total,
     pages: Math.max(1, Math.ceil(total / limit)),
-    users: users.map((u) => toAdminUser(u, now)),
+    users: users.map(toAdminUser),
   });
 }));
 
 // ---------------------------------------------------------------------------
-// GET /api/admin/users/:id
+// POST /api/admin/users  { gameId, username, password, note }  -> create a streamer account
+// ---------------------------------------------------------------------------
+router.post("/users", handle(async (req, res) => {
+  const { username, password, note } = req.body || {};
+  const gameId = String((req.body && req.body.gameId) || "").toLowerCase().trim();
+  if (!config.games.has(gameId)) return fail(res, 400, "UNKNOWN_GAME", "unknown gameId");
+  const err = validateUsername(username) || validatePassword(password);
+  if (err) return fail(res, 400, "INVALID_INPUT", err);
+
+  try {
+    const user = await User.create({
+      gameId,
+      username: username.trim(),
+      password: await bcrypt.hash(password, 10),
+      note: String(note || "").slice(0, 200),
+    });
+    res.status(201).json({ ok: true, message: "account created", user: toAdminUser(user) });
+  } catch (e) {
+    if (e.code === 11000) return fail(res, 409, "USERNAME_TAKEN", "username already taken");
+    throw e;
+  }
+}));
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/users/:id   -> user + last 20 login attempts
 // ---------------------------------------------------------------------------
 router.get("/users/:id", handle(async (req, res) => {
   const user = await findUserOr404(req, res);
-  if (user) res.json({ ok: true, user: toAdminUser(user, new Date()) });
-}));
-
-// ---------------------------------------------------------------------------
-// POST /api/admin/users/:id/kick   -> logs the player out of the game now
-// ---------------------------------------------------------------------------
-router.post("/users/:id/kick", handle(async (req, res) => {
-  const user = await findUserOr404(req, res);
   if (!user) return;
-  user.session = null;
-  await user.save();
-  res.json({ ok: true, message: "player kicked", user: toAdminUser(user, new Date()) });
+  const logins = await LoginEvent.find({ userId: user._id }).sort({ at: -1 }).limit(20);
+  res.json({
+    ok: true,
+    user: toAdminUser(user),
+    logins: logins.map((l) => ({ at: l.at, ok: l.ok, code: l.code, deviceId: l.deviceId, ip: l.ip })),
+  });
 }));
 
-// ---------------------------------------------------------------------------
-// POST /api/admin/users/:id/ban  { reason }   -> kicked + cannot log in
-// ---------------------------------------------------------------------------
-router.post("/users/:id/ban", handle(async (req, res) => {
-  const user = await findUserOr404(req, res);
-  if (!user) return;
-  user.banned = true;
-  user.banReason = String((req.body && req.body.reason) || "").slice(0, 200);
-  user.bannedAt = new Date();
-  user.session = null;
-  await user.save();
-  res.json({ ok: true, message: "player banned", user: toAdminUser(user, new Date()) });
-}));
+// PATCH /api/admin/users/:id  { note }
+router.patch("/users/:id", handle((req, res) =>
+  update(req, res, { $set: { note: String((req.body && req.body.note) || "").slice(0, 200) } }, "note saved")));
 
-// ---------------------------------------------------------------------------
+// POST /api/admin/users/:id/reset-device  -> next login from any device locks it again
+router.post("/users/:id/reset-device", handle((req, res) =>
+  update(req, res, {
+    $set: { deviceId: null, deviceBoundAt: null, lastRejectedDeviceAt: null, lastRejectedDeviceId: null },
+    $inc: { tokenVersion: 1 },
+  }, "device reset")));
+
+// POST /api/admin/users/:id/kick  -> old tokens stop working (must /login again)
+router.post("/users/:id/kick", handle((req, res) =>
+  update(req, res, { $inc: { tokenVersion: 1 } }, "tokens revoked")));
+
+// POST /api/admin/users/:id/ban  { reason }
+router.post("/users/:id/ban", handle((req, res) =>
+  update(req, res, {
+    $set: { banned: true, banReason: String((req.body && req.body.reason) || "").slice(0, 200), bannedAt: new Date() },
+    $inc: { tokenVersion: 1 },
+  }, "account banned")));
+
 // POST /api/admin/users/:id/unban
-// ---------------------------------------------------------------------------
-router.post("/users/:id/unban", handle(async (req, res) => {
-  const user = await findUserOr404(req, res);
-  if (!user) return;
-  user.banned = false;
-  user.banReason = "";
-  user.bannedAt = null;
-  await user.save();
-  res.json({ ok: true, message: "player unbanned", user: toAdminUser(user, new Date()) });
-}));
+router.post("/users/:id/unban", handle((req, res) =>
+  update(req, res, { $set: { banned: false, banReason: "", bannedAt: null } }, "account unbanned")));
 
-// ---------------------------------------------------------------------------
-// POST /api/admin/users/:id/password  { newPassword }   -> also logs the player out
-// ---------------------------------------------------------------------------
+// POST /api/admin/users/:id/password  { newPassword }
 router.post("/users/:id/password", handle(async (req, res) => {
   const { newPassword } = req.body || {};
-  if (typeof newPassword !== "string" || newPassword.length < 6 || newPassword.length > 72)
-    return fail(res, 400, "INVALID_INPUT", "password must be 6-72 chars");
-  const user = await findUserOr404(req, res);
-  if (!user) return;
-  user.password = await bcrypt.hash(newPassword, 10);
-  user.session = null;
-  user.securityEvent = null;
-  await user.save();
-  res.json({ ok: true, message: "password changed", user: toAdminUser(user, new Date()) });
+  const err = validatePassword(newPassword);
+  if (err) return fail(res, 400, "INVALID_INPUT", err);
+  return update(req, res, { $set: { password: await bcrypt.hash(newPassword, 10) }, $inc: { tokenVersion: 1 } }, "password changed");
 }));
 
-// ---------------------------------------------------------------------------
-// POST /api/admin/users/:id/clear-alert   -> admin reviewed the security alert
-// ---------------------------------------------------------------------------
-router.post("/users/:id/clear-alert", handle(async (req, res) => {
-  const user = await findUserOr404(req, res);
-  if (!user) return;
-  user.securityEvent = null;
-  await user.save();
-  res.json({ ok: true, message: "alert cleared", user: toAdminUser(user, new Date()) });
-}));
+// POST /api/admin/users/:id/clear-alert  -> hide the "wrong device" alert
+router.post("/users/:id/clear-alert", handle((req, res) =>
+  update(req, res, { $set: { lastRejectedDeviceAt: null, lastRejectedDeviceId: null } }, "alert cleared")));
 
-// ---------------------------------------------------------------------------
 // DELETE /api/admin/users/:id
-// ---------------------------------------------------------------------------
 router.delete("/users/:id", handle(async (req, res) => {
   const user = await findUserOr404(req, res);
   if (!user) return;
-  await User.deleteOne({ _id: user._id });
-  res.json({ ok: true, message: "user deleted" });
+  await Promise.all([User.deleteOne({ _id: user._id }), LoginEvent.deleteMany({ userId: user._id })]);
+  res.json({ ok: true, message: "account deleted" });
 }));
 
 module.exports = router;

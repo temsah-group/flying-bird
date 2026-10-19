@@ -38,7 +38,7 @@ export default function Dashboard({ onLogout }) {
     };
   }, [gameId, tick]);
 
-  // Auto refresh (online count changes all the time)
+  // Auto refresh (new logins keep coming)
   useEffect(() => {
     const t = setInterval(reload, REFRESH_MS);
     return () => clearInterval(t);
@@ -76,11 +76,11 @@ export default function Dashboard({ onLogout }) {
         <StatsCards stats={stats} />
 
         <div className="grid-2">
-          <SignupsChart data={stats ? stats.signupsPerDay : null} />
+          <SignupsChart data={stats ? stats.loginsPerDay : null} />
           <PerGame stats={stats} />
         </div>
 
-        <UsersTable gameId={gameId} tick={tick} onChanged={reload} notify={notify} />
+        <UsersTable gameId={gameId} games={games} tick={tick} onChanged={reload} notify={notify} />
       </main>
 
       {toast && <Toast key={toast.id} {...toast} onDone={() => setToast(null)} />}
@@ -93,7 +93,7 @@ function PerGame({ stats }) {
   const max = Math.max(1, ...rows.map((r) => r.users));
   return (
     <section className="card">
-      <h2 className="card-title">اليوزرات في كل لعبة</h2>
+      <h2 className="card-title">الحسابات في كل لعبة</h2>
       {!stats ? (
         <div className="skeleton" style={{ height: 120 }} />
       ) : (
