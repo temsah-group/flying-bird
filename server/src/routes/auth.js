@@ -44,6 +44,7 @@ function logAttempt(req, { user, username, ok, code, deviceId }) {
 //
 //   First successful login locks the account to that deviceId.
 //   After that, only the same deviceId can log in.
+//   Every login gives a new token and ends the previous one.
 //
 //   200 { ok: true, message, token }
 //   401 WRONG_CREDENTIALS  | 403 WRONG_DEVICE | 403 BANNED | 429 TOO_MANY_ATTEMPTS
@@ -107,7 +108,12 @@ router.post("/login", handle(async (req, res) => {
   }
 
   // 4) success
-  await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: now, lastLoginIp: req.ip || "" } });
+  // tokenVersion + 1 -> every token from earlier logins stops working (only the newest token is valid)
+  user = await User.findByIdAndUpdate(
+    user._id,
+    { $set: { lastLoginAt: now, lastLoginIp: req.ip || "" }, $inc: { tokenVersion: 1 } },
+    { new: true }
+  );
   logAttempt(req, { user, username: uname, ok: true, deviceId });
 
   res.json({
