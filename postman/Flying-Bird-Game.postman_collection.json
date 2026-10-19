@@ -74,7 +74,7 @@
               "value": "application/json"
             }
           ],
-          "body": "{\n  \"ok\": true,\n  \"message\": \"login successful\",\n  \"token\": \"eyJhbGciOi...\",\n  \"expiresIn\": 86400,\n  \"user\": {\n    \"username\": \"streamer1\",\n    \"gameId\": \"flying-bird\"\n  }\n}"
+          "body": "{\n  \"ok\": true,\n  \"message\": \"login successful\",\n  \"token\": \"eyJhbGciOi...\"\n}"
         },
         {
           "name": "401 WRONG_CREDENTIALS",
@@ -356,7 +356,7 @@
               "value": "application/json"
             }
           ],
-          "body": "{\n  \"ok\": true,\n  \"message\": \"ok to play\",\n  \"user\": {\n    \"username\": \"streamer1\",\n    \"gameId\": \"flying-bird\"\n  }\n}"
+          "body": "{\n  \"ok\": true,\n  \"message\": \"ok to play\"\n}"
         },
         {
           "name": "401 DEVICE_MISMATCH (other PC)",

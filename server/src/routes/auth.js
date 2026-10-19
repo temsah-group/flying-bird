@@ -45,7 +45,7 @@ function logAttempt(req, { user, username, ok, code, deviceId }) {
 //   First successful login locks the account to that deviceId.
 //   After that, only the same deviceId can log in.
 //
-//   200 { ok: true, token, expiresIn, user }
+//   200 { ok: true, message, token }
 //   401 WRONG_CREDENTIALS  | 403 WRONG_DEVICE | 403 BANNED | 429 TOO_MANY_ATTEMPTS
 // ---------------------------------------------------------------------------
 router.post("/login", handle(async (req, res) => {
@@ -114,8 +114,6 @@ router.post("/login", handle(async (req, res) => {
     ok: true,
     message: "login successful",
     token: signPlayerToken(user, deviceId),
-    expiresIn: config.tokenTtlSec,
-    user: { username: user.username, gameId: user.gameId },
   });
 }));
 
@@ -125,16 +123,12 @@ router.post("/login", handle(async (req, res) => {
 //             X-Device-Id:   <same deviceId used in /login>
 //
 //   The game calls this when the streamer presses PLAY / START.
-//   200 { ok: true }  -> start the game
+//   200 { ok: true, message }  -> start the game
 //   401 NO_TOKEN | TOKEN_EXPIRED | TOKEN_INVALID | DEVICE_MISMATCH | SESSION_ENDED  -> back to login
 //   403 BANNED
 // ---------------------------------------------------------------------------
 router.post("/play", requireAuth, (req, res) => {
-  res.json({
-    ok: true,
-    message: "ok to play",
-    user: { username: req.user.username, gameId: req.user.gameId },
-  });
+  res.json({ ok: true, message: "ok to play" });
 });
 
 module.exports = router;

@@ -38,9 +38,7 @@ The game uses two endpoints: `POST /login` then `POST /play`. Accounts are creat
 {
   "ok": true,
   "message": "login successful",
-  "token": "eyJhbGciOi...",
-  "expiresIn": 86400,
-  "user": { "username": "streamer1", "gameId": "flying-bird" }
+  "token": "eyJhbGciOi..."
 }
 ```
 
@@ -76,7 +74,7 @@ X-Device-Id: <the SAME deviceId sent in /login>
 **200 OK** → start the game
 
 ```json
-{ "ok": true, "message": "ok to play", "user": { "username": "streamer1", "gameId": "flying-bird" } }
+{ "ok": true, "message": "ok to play" }
 ```
 
 **Errors**
