@@ -5,10 +5,7 @@ flying bird/
 ├── server/      سيرفر الـ Auth (Express + MongoDB) — يخدم أكتر من لعبة
 ├── admin-dashboard/  داش بورد الأدمن (React) — فرونت منفصل
 ├── postman/     كولكشن Postman فيه كل الـ endpoints
-├── API.md       شرح كل الـ endpoints
-├── SECURITY.md  الأمان: إيه المتأمّن، سيناريوهات الهاكر، و HTTPS
-├── DEPLOY.md    رفع السيرفر على Render خطوة بخطوة
-└── render.yaml  إعدادات Render
+└── API.md       شرح كل الـ endpoints
 ```
 
 ## تشغيل السيرفر
