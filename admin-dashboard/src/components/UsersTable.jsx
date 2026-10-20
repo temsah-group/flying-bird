@@ -3,6 +3,7 @@ import { api, errorText } from "../api.js";
 import { formatDate, formatDateTime, formatNumber, timeAgo } from "../format.js";
 import Modal from "./Modal.jsx";
 import CreateUserModal from "./CreateUserModal.jsx";
+import { SECTIONS } from "../sections.js";
 
 const TABS = [
   { key: "all", label: "الكل" },
@@ -13,7 +14,8 @@ const TABS = [
 const LIMIT = 20;
 const shortId = (id) => (id.length > 14 ? id.slice(0, 6) + "…" + id.slice(-4) : id);
 
-export default function UsersTable({ gameId, games = [], tick, onChanged, notify }) {
+export default function UsersTable({ type = "streamer", gameId, games = [], tick, onChanged, notify }) {
+  const section = SECTIONS[type];
   const [status, setStatus] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -37,7 +39,7 @@ export default function UsersTable({ gameId, games = [], tick, onChanged, notify
   useEffect(() => {
     let alive = true;
     api
-      .users({ gameId: gameId === "all" ? "" : gameId, status, search, page, limit: LIMIT })
+      .users({ type, gameId: gameId === "all" ? "" : gameId, status, search, page, limit: LIMIT })
       .then((d) => {
         if (!alive) return;
         setData(d);
@@ -47,7 +49,7 @@ export default function UsersTable({ gameId, games = [], tick, onChanged, notify
     return () => {
       alive = false;
     };
-  }, [gameId, status, search, page, tick]);
+  }, [type, gameId, status, search, page, tick]);
 
   // Wraps an action: run it, show a toast, refresh everything. Errors show inside the modal.
   const act = (fn, okText) => async (value) => {
@@ -122,7 +124,7 @@ export default function UsersTable({ gameId, games = [], tick, onChanged, notify
     <section className="card">
       <div className="card-head wrap">
         <h2 className="card-title">
-          الحسابات {data && <span className="muted num">({formatNumber(data.total)})</span>}
+          {section.title} {data && <span className="muted num">({formatNumber(data.total)})</span>}
         </h2>
         <button className="btn btn-primary" onClick={() => setCreating(true)}>+ حساب جديد</button>
       </div>
@@ -239,6 +241,9 @@ export default function UsersTable({ gameId, games = [], tick, onChanged, notify
       {modal && <Modal {...modal} onClose={() => setModal(null)} />}
       {creating && (
         <CreateUserModal
+          type={type}
+          title={section.newTitle}
+          notePlaceholder={section.notePh}
           games={games}
           defaultGame={gameId !== "all" ? gameId : undefined}
           onCreated={(u) => {

@@ -57,6 +57,7 @@ const dayKey = (d) =>
 function toAdminUser(u) {
   return {
     id: String(u._id),
+    type: u.type || "streamer",
     gameId: u.gameId,
     username: u.username,
     note: u.note || "",
@@ -75,6 +76,25 @@ function toAdminUser(u) {
 function gameFilter(req) {
   const g = String(req.query.gameId || "").toLowerCase().trim();
   return g && g !== "all" ? { gameId: g } : {};
+}
+
+// ?type=streamer | agency  (old accounts without a type count as streamers)
+const TYPES = ["streamer", "agency"];
+function typeOf(req) {
+  const t = String(req.query.type || "").toLowerCase();
+  return TYPES.includes(t) ? t : "";
+}
+function userTypeFilter(req) {
+  const t = typeOf(req);
+  if (t === "agency") return { type: "agency" };
+  if (t === "streamer") return { type: { $ne: "agency" } };
+  return {};
+}
+function eventTypeFilter(req) {
+  const t = typeOf(req);
+  if (t === "agency") return { accountType: "agency" };
+  if (t === "streamer") return { accountType: { $ne: "agency" } };
+  return {};
 }
 
 async function findUserOr404(req, res) {
@@ -100,10 +120,11 @@ async function update(req, res, changes, message) {
 router.get("/games", (_req, res) => res.json({ ok: true, games: [...config.games] }));
 
 // ---------------------------------------------------------------------------
-// GET /api/admin/stats?gameId=
+// GET /api/admin/stats?gameId=&type=streamer|agency
 // ---------------------------------------------------------------------------
 router.get("/stats", handle(async (req, res) => {
-  const base = gameFilter(req);
+  const base = { ...gameFilter(req), ...userTypeFilter(req) };
+  const eventBase = { ...gameFilter(req), ...eventTypeFilter(req) };
   const now = new Date();
   const today = startOfDay(now);
   const weekAgo = new Date(today.getTime() - 6 * DAY);
@@ -113,19 +134,19 @@ router.get("/stats", handle(async (req, res) => {
     User.countDocuments({ ...base, lastLoginAt: { $gte: today } }),
     User.countDocuments({ ...base, deviceId: null }),
     User.countDocuments({ ...base, banned: true }),
-    LoginEvent.countDocuments({ ...base, code: "WRONG_DEVICE", at: { $gte: weekAgo } }),
+    LoginEvent.countDocuments({ ...eventBase, code: "WRONG_DEVICE", at: { $gte: weekAgo } }),
   ]);
 
   // Successful logins per day, last 14 days (oldest first)
   const days = [];
   for (let i = 13; i >= 0; i--) days.push(new Date(today.getTime() - i * DAY));
   const counts = await Promise.all(
-    days.map((d) => LoginEvent.countDocuments({ ...base, ok: true, at: { $gte: d, $lt: new Date(d.getTime() + DAY) } }))
+    days.map((d) => LoginEvent.countDocuments({ ...eventBase, ok: true, at: { $gte: d, $lt: new Date(d.getTime() + DAY) } }))
   );
   const loginsPerDay = days.map((d, i) => ({ date: dayKey(d), count: counts[i] }));
 
   const games = [...config.games];
-  const perGameCounts = await Promise.all(games.map((g) => User.countDocuments({ gameId: g })));
+  const perGameCounts = await Promise.all(games.map((g) => User.countDocuments({ ...userTypeFilter(req), gameId: g })));
   const perGame = games.map((g, i) => ({ gameId: g, users: perGameCounts[i] }));
 
   res.json({
@@ -135,7 +156,7 @@ router.get("/stats", handle(async (req, res) => {
 }));
 
 // ---------------------------------------------------------------------------
-// GET /api/admin/users?gameId=&search=&status=all|bound|unbound|banned|alerts&page=&limit=
+// GET /api/admin/users?type=streamer|agency&gameId=&search=&status=all|bound|unbound|banned|alerts&page=&limit=
 // ---------------------------------------------------------------------------
 router.get("/users", handle(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -143,7 +164,7 @@ router.get("/users", handle(async (req, res) => {
   const search = String(req.query.search || "").trim();
   const status = String(req.query.status || "all");
 
-  const filter = { ...gameFilter(req) };
+  const filter = { ...gameFilter(req), ...userTypeFilter(req) };
   if (search) {
     const rx = { $regex: escapeRegex(search), $options: "i" };
     filter.$or = [{ username: rx }, { note: rx }];
@@ -169,10 +190,12 @@ router.get("/users", handle(async (req, res) => {
 }));
 
 // ---------------------------------------------------------------------------
-// POST /api/admin/users  { gameId, username, password, note }  -> create a streamer account
+// POST /api/admin/users  { type, gameId, username, password, note }  -> create an account (type: streamer | agency)
 // ---------------------------------------------------------------------------
 router.post("/users", handle(async (req, res) => {
   const { username, password, note } = req.body || {};
+  const type = String((req.body && req.body.type) || "streamer").toLowerCase();
+  if (!TYPES.includes(type)) return fail(res, 400, "INVALID_INPUT", "type must be streamer or agency");
   const gameId = String((req.body && req.body.gameId) || "").toLowerCase().trim();
   if (!config.games.has(gameId)) return fail(res, 400, "UNKNOWN_GAME", "unknown gameId");
   const err = validateUsername(username) || validatePassword(password);
@@ -180,6 +203,7 @@ router.post("/users", handle(async (req, res) => {
 
   try {
     const user = await User.create({
+      type,
       gameId,
       username: username.trim(),
       password: await bcrypt.hash(password, 10),

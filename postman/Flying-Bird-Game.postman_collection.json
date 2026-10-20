@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "Flying Bird - Game",
+    "name": "Flying Bird - Unreal (Login + Play)",
     "description": "For the game developer: 1) Login  2) Play. Change baseUrl to the live server if needed.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -316,7 +316,7 @@
             "play"
           ]
         },
-        "description": "Call when the streamer presses PLAY / START. No body.\n\nHeaders:\n- Authorization: Bearer <token from Login>\n- X-Device-Id: <the SAME deviceId sent in Login>\n\nok: true -> start the game.\nAny 401 (NO_TOKEN, TOKEN_EXPIRED, TOKEN_INVALID, DEVICE_MISMATCH, SESSION_ENDED) -> go back to the login screen (call Login again).\n403 BANNED -> show \"account banned\" (+ reason).\n\nThe token ends when: it expires (24h), the admin bans / changes password / resets the device / deletes the account."
+        "description": "Call when the streamer presses PLAY / START. No body.\n\nHeaders:\n- Authorization: Bearer <token from Login>\n- X-Device-Id: <the SAME deviceId sent in Login>\n\nok: true -> start the game.\nAny 401 (NO_TOKEN, TOKEN_EXPIRED, TOKEN_INVALID, DEVICE_MISMATCH, SESSION_ENDED) -> go back to the login screen (call Login again).\n403 BANNED -> show \"account banned\" (+ reason).\n\nThe token ends when: a NEWER login happens (only the newest token works), it expires (24h), or the admin bans / changes password / resets the device / deletes the account."
       },
       "response": [
         {

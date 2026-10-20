@@ -8,6 +8,7 @@ const loginEventSchema = new mongoose.Schema(
     gameId: String,
     userId: { type: mongoose.Schema.Types.ObjectId, default: null },
     username: String,
+    accountType: String, // "streamer" | "agency" ("" when the username does not exist)
     ok: Boolean,
     code: String, // "" on success, else WRONG_CREDENTIALS / WRONG_DEVICE / BANNED
     deviceId: String,

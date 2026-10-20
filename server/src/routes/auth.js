@@ -32,6 +32,7 @@ function logAttempt(req, { user, username, ok, code, deviceId }) {
     gameId: req.gameId,
     userId: user ? user._id : null,
     username,
+    accountType: user ? user.type || "streamer" : "",
     ok,
     code: code || "",
     deviceId,

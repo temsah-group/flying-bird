@@ -19,9 +19,9 @@ async function copy(text) {
 }
 
 /**
- * Admin creates a streamer account, then sees the username + password once to hand them over.
+ * Admin creates an account (streamer or agency), then sees the username + password once to hand them over.
  */
-export default function CreateUserModal({ games, defaultGame, onCreated, onClose }) {
+export default function CreateUserModal({ type = "streamer", title, notePlaceholder, games, defaultGame, onCreated, onClose }) {
   const [gameId, setGameId] = useState(defaultGame || games[0] || "flying-bird");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState(randomPassword());
@@ -47,7 +47,7 @@ export default function CreateUserModal({ games, defaultGame, onCreated, onClose
     setBusy(true);
     setError("");
     try {
-      const res = await api.createUser({ gameId, username: username.trim(), password, note: note.trim() });
+      const res = await api.createUser({ type, gameId, username: username.trim(), password, note: note.trim() });
       setCreated({ ...res.user, password });
       onCreated(res.user);
     } catch (err) {
@@ -63,7 +63,7 @@ export default function CreateUserModal({ games, defaultGame, onCreated, onClose
       {created ? (
         <div className="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
           <h3 id="create-title">الحساب اتعمل</h3>
-          <p className="muted">ابعت البيانات دي للاستريمر. الباسورد مش هيظهر تاني بعد ما تقفل.</p>
+          <p className="muted">ابعت البيانات دي لصاحب الحساب. الباسورد مش هيظهر تاني بعد ما تقفل.</p>
           <pre className="creds" dir="ltr">{credsText}</pre>
           <p className="muted small">الحساب هيتقفل على أول جهاز يدخل منه.</p>
           <div className="modal-actions">
@@ -79,7 +79,7 @@ export default function CreateUserModal({ games, defaultGame, onCreated, onClose
         </div>
       ) : (
         <form className="modal" role="dialog" aria-modal="true" aria-labelledby="create-title" onSubmit={submit}>
-          <h3 id="create-title">حساب جديد لاستريمر</h3>
+          <h3 id="create-title">{title || "حساب جديد"}</h3>
 
           {games.length > 1 && (
             <label className="field">
@@ -111,7 +111,7 @@ export default function CreateUserModal({ games, defaultGame, onCreated, onClose
           <label className="field">
             <span>ملاحظة (اختياري)</span>
             <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200}
-              placeholder="مثلاً: أحمد - تويتش" dir="auto" />
+              placeholder={notePlaceholder || ""} dir="auto" />
           </label>
 
           {error && <p className="form-error" role="alert">{error}</p>}

@@ -332,3 +332,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 .input-row { display: flex; gap: 8px; }
 .input-row input { flex: 1; }
 .creds { font-family: ui-monospace, Consolas, monospace; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left; white-space: pre-wrap; user-select: all; }
+
+/* ---------- section tabs (streamers / agency) ---------- */
+.section-nav { max-width: 1200px; margin: 16px auto 0; padding: 0 16px; }
+.tabs-big .tab { padding: 8px 20px; font-size: 15px; }

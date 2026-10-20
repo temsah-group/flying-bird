@@ -91,7 +91,7 @@ export const api = {
     setToken("");
   },
   games: () => request("GET", "/admin/games"),
-  stats: (gameId) => request("GET", "/admin/stats" + qs({ gameId })),
+  stats: (gameId, type) => request("GET", "/admin/stats" + qs({ gameId, type })),
   users: (params) => request("GET", "/admin/users" + qs(params)),
   createUser: (data) => request("POST", "/admin/users", data),
   user: (id) => request("GET", `/admin/users/${id}`),

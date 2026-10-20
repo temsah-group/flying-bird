@@ -58,6 +58,8 @@ The game uses two endpoints: `POST /login` then `POST /play`. Accounts are creat
 
 Keep the `token` in memory (no need to save it to a file). It is needed for `/play`.
 
+Every login gives a **new** token and the previous token stops working (`SESSION_ENDED`). Only the newest token is valid.
+
 ---
 
 ## Play (the game)
@@ -85,7 +87,7 @@ X-Device-Id: <the SAME deviceId sent in /login>
 | 401 | `TOKEN_EXPIRED` | token older than `TOKEN_HOURS` (24h) | back to login |
 | 401 | `TOKEN_INVALID` | bad token / account deleted | back to login |
 | 401 | `DEVICE_MISMATCH` | `X-Device-Id` missing or not the login device | back to login |
-| 401 | `SESSION_ENDED` | admin changed password / banned / reset device / kicked | back to login |
+| 401 | `SESSION_ENDED` | a newer login happened, or admin changed password / banned / reset device / kicked | back to login |
 | 403 | `BANNED` | banned (`reason` included) | show "banned" |
 
 Any 401 = call `/login` again (the player re-enters username + password).
@@ -98,13 +100,15 @@ Future endpoints (scores, etc.) use the same two headers.
 
 All admin requests except login need `Authorization: Bearer <adminToken>`.
 
+Accounts have a `type`: `streamer` or `agency`. It only decides which dashboard tab they appear in; `/login` and `/play` work the same for both.
+
 | Method | Path | Body / query | Does |
 |---|---|---|---|
 | POST | `/admin/login` | `{ password }` | returns `token` (ADMIN_PASSWORD from `.env`) |
 | GET | `/admin/games` | | list of games |
-| GET | `/admin/stats` | `?gameId=` | totals, logins today, not bound, banned, wrong-device tries (7 days), logins per day (14 days) |
-| GET | `/admin/users` | `?gameId=&search=&status=&page=&limit=` | list. `status` = `all` `bound` `unbound` `alerts` `banned`. `search` = username or note |
-| POST | `/admin/users` | `{ gameId, username, password, note }` | create a streamer account (`409 USERNAME_TAKEN`) |
+| GET | `/admin/stats` | `?gameId=&type=` | totals, logins today, not bound, banned, wrong-device tries (7 days), logins per day (14 days) |
+| GET | `/admin/users` | `?type=&gameId=&search=&status=&page=&limit=` | list. `type` = `streamer` `agency`. `status` = `all` `bound` `unbound` `alerts` `banned`. `search` = username or note |
+| POST | `/admin/users` | `{ type, gameId, username, password, note }` | create an account. `type` = `streamer` (default) or `agency` (`409 USERNAME_TAKEN`) |
 | GET | `/admin/users/:id` | | account + last 20 login attempts |
 | PATCH | `/admin/users/:id` | `{ note }` | edit note |
 | POST | `/admin/users/:id/reset-device` | | unlock device (next login locks again) |
@@ -119,7 +123,7 @@ User object returned to admin:
 
 ```json
 {
-  "id": "...", "gameId": "flying-bird", "username": "streamer1", "note": "Ahmed - Twitch",
+  "id": "...", "type": "streamer", "gameId": "flying-bird", "username": "streamer1", "note": "Ahmed - Twitch",
   "deviceId": "A1B2C3D4E5F6A7B8", "deviceBoundAt": "...",
   "lastLoginAt": "...", "lastLoginIp": "...",
   "wrongDevice": { "at": "...", "deviceId": "OTHER-PC" },

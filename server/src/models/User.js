@@ -1,8 +1,10 @@
 const mongoose = require("mongoose");
 
-// An account created by the admin and given to a streamer.
+// An account created by the admin and given to a streamer or an agency member.
 const userSchema = new mongoose.Schema(
   {
+    // "streamer" or "agency" (only decides which dashboard tab it shows in; login works the same)
+    type: { type: String, enum: ["streamer", "agency"], default: "streamer" },
     gameId: { type: String, required: true, lowercase: true, trim: true },
     username: { type: String, required: true, lowercase: true, trim: true },
     password: { type: String, required: true }, // bcrypt hash
@@ -32,5 +34,6 @@ const userSchema = new mongoose.Schema(
 // Same username can exist in different games, but only once per game.
 userSchema.index({ gameId: 1, username: 1 }, { unique: true });
 userSchema.index({ createdAt: -1 });
+userSchema.index({ type: 1, createdAt: -1 });
 
 module.exports = mongoose.model("User", userSchema);
